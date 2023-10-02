@@ -174,6 +174,9 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 }
 
 func handleBodyDump(c echo.Context, body []byte, contextNewAttributeName string) {
+	if len(body) == 0 {
+		return
+	}
 	var bodyOutput []byte
 	if c.Response().Header().Get("content-encoding") == "gzip" {
 		bodyOutput = decompressGzip(body)
