@@ -87,7 +87,7 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 				"uri", v.URI,
 				"statusCode", v.Status,
 				"requestBody", string(reqBodyStr),
-				"resBody", string(resBodyStr),
+				"responseBody", string(resBodyStr),
 			)
 			return nil
 		},
