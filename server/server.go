@@ -86,8 +86,9 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 				"method", v.Method,
 				"uri", v.URI,
 				"statusCode", v.Status,
-				"requestBody", string(reqBodyStr),
-				"responseBody", string(resBodyStr),
+				"requestBody", (reqBodyStr),
+				"responseBody", (resBodyStr),
+				"message", (fmt.Sprintf("%s %s %s", v.Method, v.URI, string(v.Status))),
 			)
 			return nil
 		},
