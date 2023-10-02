@@ -193,7 +193,8 @@ func decompressGzip(resBody []byte) []byte {
 	reader := bytes.NewReader([]byte(resBody))
 	gzreader, e1 := gzip.NewReader(reader)
 	if e1 != nil {
-		fmt.Println(e1)
+		// fmt.Println(e1)
+		return resBody
 	}
 
 	resBodyOutput, e2 := ioutil.ReadAll(gzreader)
