@@ -1,9 +1,12 @@
 package server
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
@@ -58,10 +61,50 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 		telegramBot:  telegram.NewBotWithHandler(integration.NewTelegramHandler(store)),
 	}
 
-	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: `{"time":"${time_rfc3339}",` +
-			`"method":"${method}","uri":"${uri}",` +
-			`"status":${status},"error":"${error}"}` + "\n",
+	// e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+	// 	Format: `{"timestamp":"${time_rfc3339}", "ip": "${remote_ip}"` +
+	// 		`"method":"${method}","uri":"${uri}",` +
+	// 		`"status":${status},"error":"${error}", "requestBody": "${body}",  "responseBody": "${resBody}"},` + "\n",
+	// }))
+
+	logger, _ := zap.NewProduction()
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogURI:      true,
+		LogStatus:   true,
+		LogMethod:   true,
+		LogRemoteIP: true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			resBodyStr, error := c.Get("resBodyStr").(string)
+			reqBodyStr, error := c.Get("reqBodyStr").(string)
+			if error {
+				// body doenst exist
+			}
+			sugar := logger.Sugar()
+			sugar.Infow("access log",
+				"timestamp", v.StartTime.String(),
+				"ip", v.RemoteIP,
+				"method", v.Method,
+				"uri", v.URI,
+				"statusCode", v.Status,
+				"requestBody", string(reqBodyStr),
+				"resBody", string(resBodyStr),
+			)
+			return nil
+		},
+	}))
+
+	e.Use(middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte) {
+		// Handle Request
+		requestContentType := c.Response().Header().Get("Content-Type")
+		if strings.Contains(requestContentType, "application/json") {
+			handleBodyDump(c, reqBody, "reqBodyStr")
+		}
+		// Handle Response
+		responseContentType := c.Response().Header().Get("Content-Type")
+		if strings.Contains(responseContentType, "application/json") {
+			handleBodyDump(c, resBody, "resBodyStr")
+		}
+		return
 	}))
 
 	e.Use(middleware.Gzip())
@@ -128,6 +171,33 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 	}
 
 	return s, nil
+}
+
+func handleBodyDump(c echo.Context, body []byte, contextNewAttributeName string) {
+	var bodyOutput []byte
+	if c.Response().Header().Get("content-encoding") == "gzip" {
+		bodyOutput = decompressGzip(body)
+	} else {
+		bodyOutput = body
+	}
+	var bodyStr json.RawMessage
+	if json.Unmarshal(bodyOutput, &bodyStr) == nil {
+		c.Set(contextNewAttributeName, string(bodyStr))
+	}
+}
+
+func decompressGzip(resBody []byte) []byte {
+	reader := bytes.NewReader([]byte(resBody))
+	gzreader, e1 := gzip.NewReader(reader)
+	if e1 != nil {
+		fmt.Println(e1)
+	}
+
+	resBodyOutput, e2 := ioutil.ReadAll(gzreader)
+	if e2 != nil {
+		fmt.Println(e2)
+	}
+	return resBodyOutput
 }
 
 func (s *Server) Start(ctx context.Context) error {
