@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -88,7 +89,7 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 				"statusCode", v.Status,
 				"requestBody", (reqBodyStr),
 				"responseBody", (resBodyStr),
-				"message", (fmt.Sprintf("%s %s %s", v.Method, v.URI, string(v.Status))),
+				"message", (fmt.Sprintf("%s %s %s", v.Method, v.URI, strconv.Itoa(v.Status))),
 			)
 			return nil
 		},
