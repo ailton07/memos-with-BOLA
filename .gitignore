@@ -17,3 +17,7 @@ build
 .idea
 
 bin/air
+
+.db
+.db-shm
+.db-wal
